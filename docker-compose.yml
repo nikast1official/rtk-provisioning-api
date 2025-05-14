@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+  service-stub:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - PYTHONPATH=/app
+    command: ["python", "-m", "service_stub.main"]
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8001:8001"
+  provisioning-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - RABBIT_URL=amqp://guest:guest@rabbitmq:5672/
+      - PYTHONPATH=/app
+    depends_on:
+      - rabbitmq
+    ports:
+      - "8000:8000"
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - RABBIT_URL=amqp://guest:guest@rabbitmq:5672/
+      - SERVICE_STUB_URL=http://service-stub:8001
+      - PYTHONPATH=/app
+    depends_on:
+      - rabbitmq
+      - service-stub
